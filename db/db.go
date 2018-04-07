@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/configor"
 	"github.com/jinzhu/gorm"
-	"github.com/qor/validations"
 
 	_ "github.com/jinzhu/gorm/dialects/mssql"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -24,6 +23,11 @@ var Config = struct {
 		Database string `required:"true"`
 	}
 
+	Dev struct {
+		Adapter  string `required:"true"`
+		Database string `required:"true"`
+	}
+
 	Production struct {
 		Adapter  string `required:"true"`
 		Database string `required:"true"`
@@ -31,8 +35,9 @@ var Config = struct {
 }{}
 
 var (
-	Migrate string
-	ShowSql string
+	Migrate  string
+	ShowSql  string
+	DataBase string
 )
 
 /**
@@ -42,6 +47,7 @@ func init() {
 	Migrate = os.Getenv("MIGRATE")
 	flag.StringVar(&Migrate, "m", Migrate, "AutoMigrate")
 	flag.StringVar(&ShowSql, "s", ShowSql, "ShowSql")
+	flag.StringVar(&DataBase, "db", DataBase, "DataBase")
 	flag.Parse()
 }
 
@@ -51,15 +57,21 @@ func init() {
 func Connect() *gorm.DB {
 	configor.Load(&Config, "config.yml")
 
-	db, err := gorm.Open(Config.Production.Adapter, Config.Production.Database)
+	db, err := getEnvDatabase()
 	if err != nil {
 		log.Fatalf("Got error when connect database, the error is '%v'", err)
 	}
-	validations.RegisterCallbacks(db)
 
 	flagOptions(db)
 
 	return db
+}
+
+/**
+ * DBInstance does
+ */
+func DBInstance(c *gin.Context) *gorm.DB {
+	return c.MustGet("DB").(*gorm.DB)
 }
 
 /**
@@ -85,9 +97,13 @@ func migrate(db *gorm.DB) {
 	db.AutoMigrate()
 }
 
-/**
- * DBInstance does
- */
-func DBInstance(c *gin.Context) *gorm.DB {
-	return c.MustGet("DB").(*gorm.DB)
+func getEnvDatabase() (*gorm.DB, error) {
+	switch DataBase {
+	case "test":
+		return gorm.Open(Config.Test.Adapter, Config.Test.Database)
+	case "dev":
+		return gorm.Open(Config.Dev.Adapter, Config.Dev.Database)
+	default:
+		return gorm.Open(Config.Production.Adapter, Config.Production.Database)
+	}
 }
