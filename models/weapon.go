@@ -11,6 +11,6 @@ type Weapon struct {
 	Range             uint    `gorm:"not null" json:"weapon-range"`
 	PhysicalDamage    Dice
 	MagicDamage       Dice
-	ExtraAttribute    []Attribute
 	Slot              uint `gorm:"not null" json:"weapon-slot"`
+	ExtraAttribute    []Attribute
 }
